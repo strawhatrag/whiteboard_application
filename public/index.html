@@ -107,12 +107,15 @@
       sessionStorage.setItem("whiteboardSessionUserId", userId);
     }
 
+    // Register with server
     socket.emit("register", { userId });
 
+    // Show confirmed ID
     socket.on("user-info", (info) => {
       userLabel.textContent = `You: ${info.userId}`;
     });
 
+    // Initial board state on join/refresh
     socket.on("init-board", (strokes) => {
       strokes.forEach((s) => drawPoint(s.x, s.y, s.color));
     });
@@ -121,12 +124,12 @@
       color = e.target.value;
     });
 
-    // ✅ CLEAR ONLY MY STROKES
+    // CLEAR ONLY MY STROKES
     clearMineBtn.addEventListener("click", () => {
       socket.emit("clear-mine");
     });
 
-    // ✅ CLEAR EVERYONE
+    // CLEAR EVERYONE
     clearAllBtn.addEventListener("click", () => {
       socket.emit("clear-all");
     });
@@ -156,7 +159,6 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
-    // Server tells everyone to fully redraw after one user clears theirs
     socket.on("reset-board", (strokes) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       strokes.forEach((s) => drawPoint(s.x, s.y, s.color));

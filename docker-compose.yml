@@ -12,16 +12,19 @@ services:
     container_name: whiteboard-app-1
     environment:
       - REDIS_HOST=redis
+      - PORT=3000
     depends_on:
       - redis
+    # expose on HTTP port 80 for easy access
     ports:
-      - "3001:3000"
+      - "80:3000"
 
   app2:
     build: .
     container_name: whiteboard-app-2
     environment:
       - REDIS_HOST=redis
+      - PORT=3000
     depends_on:
       - redis
     ports:
@@ -32,6 +35,7 @@ services:
     container_name: whiteboard-app-3
     environment:
       - REDIS_HOST=redis
+      - PORT=3000
     depends_on:
       - redis
     ports:

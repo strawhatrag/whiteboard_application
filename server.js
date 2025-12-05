@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // ==========================
-// ES MODULE PATH FIX
+// PATH FIX FOR ES MODULES
 // ==========================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,41 +39,42 @@ console.log("✅ Connected to Redis at", REDIS_HOST);
 
 // ==========================
 // BOARD STATE IN MEMORY
+// (persists while this process is running)
 // ==========================
-let strokes = [];
-// each item: { x, y, color, userId }
+let strokes = []; // each: { x, y, color, userId }
 
 // ==========================
-// REDIS → SOCKET BROADCAST
+// REDIS -> SOCKET BROADCAST
 // ==========================
-subscriber.subscribe("whiteboard-events", (message) => {
+await subscriber.subscribe("whiteboard-events", (message) => {
   const msg = JSON.parse(message);
 
-  // ===== DRAW =====
+  // DRAW
   if (msg.type === "draw") {
     strokes.push(msg.data);
     io.emit("draw", msg.data);
   }
 
-  // ===== CLEAR ALL =====
+  // CLEAR ALL
   if (msg.type === "clear-all") {
     strokes = [];
     io.emit("clear-all");
   }
 
-  // ===== CLEAR ONE USER =====
+  // CLEAR ONE USER
   if (msg.type === "clear-user") {
     const targetUser = msg.userId;
-
     strokes = strokes.filter((s) => s.userId !== targetUser);
 
+    // notify clients whose strokes were removed
     io.emit("clear-user", { userId: targetUser });
-    io.emit("reset-board", strokes); // resync board for everyone
+    // resync full board for everyone
+    io.emit("reset-board", strokes);
   }
 });
 
 // ==========================
-// SOCKET.IO USER HANDLING
+// SOCKET.IO HANDLING
 // ==========================
 io.on("connection", (socket) => {
   let userId = null;
@@ -86,13 +87,17 @@ io.on("connection", (socket) => {
 
     console.log("👤 User registered:", socket.id, "userId:", userId);
 
+    // Confirm ID back to client
     socket.emit("user-info", { userId });
+
+    // Send current board state so refresh/new user sees it
     socket.emit("init-board", strokes);
   });
 
-  // ===== DRAW EVENT =====
+  // DRAW EVENT
   socket.on("draw", (data) => {
-    const withUser = { ...data, userId };
+    // data: { x, y, color }
+    const withUser = { ...data, userId: userId || "UNKNOWN" };
 
     publisher.publish(
       "whiteboard-events",
@@ -100,7 +105,7 @@ io.on("connection", (socket) => {
     );
   });
 
-  // ===== CLEAR ALL EVENT =====
+  // CLEAR ALL (GLOBAL)
   socket.on("clear-all", () => {
     publisher.publish(
       "whiteboard-events",
@@ -108,8 +113,9 @@ io.on("connection", (socket) => {
     );
   });
 
-  // ===== CLEAR ONLY MY STROKES =====
+  // CLEAR ONLY MY STROKES
   socket.on("clear-mine", () => {
+    if (!userId) return;
     publisher.publish(
       "whiteboard-events",
       JSON.stringify({ type: "clear-user", userId })
@@ -126,6 +132,6 @@ io.on("connection", (socket) => {
 // ==========================
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Whiteboard running at http://localhost:${PORT}`);
 });
