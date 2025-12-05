@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  app1:
+    build: .
+    container_name: whiteboard-app-1
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    ports:
+      - "3001:3000"
+
+  app2:
+    build: .
+    container_name: whiteboard-app-2
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    ports:
+      - "3002:3000"
+
+  app3:
+    build: .
+    container_name: whiteboard-app-3
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    ports:
+      - "3003:3000"
